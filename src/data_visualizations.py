@@ -89,10 +89,26 @@ class HateSpeechVisualizer:
         
         # Create class distribution
         class_counts = df['label'].value_counts().sort_index()
-        class_names = ['Hate Speech', 'Non-Hate Speech'] if len(class_counts) == 2 else ['Hate Speech', 'Offensive', 'Neither']
         
-        # Create bar chart
-        ax = sns.barplot(x=class_names, y=class_counts.values, palette='viridis')
+        # Determine class names based on the actual values in the dataset
+        unique_labels = sorted(df['label'].unique())
+        
+        # Handle different label mappings based on dataset formats
+        if len(unique_labels) == 2 and set(unique_labels) == {0, 1}:
+            # Standard binary format where 1 = Hate Speech, 0 = Non-Hate Speech
+            class_names = ['Non-Hate Speech', 'Hate Speech']
+        elif len(unique_labels) == 3:
+            # Some datasets use: 0 = Hate Speech, 1 = Offensive, 2 = Neither
+            class_names = ['Hate Speech', 'Offensive', 'Neither']
+        else:
+            # Fallback for any other format
+            class_names = [f'Class {label}' for label in unique_labels]
+        
+        # Create bar chart with proper color mapping
+        colors = ['lightgreen', 'salmon'] if len(unique_labels) == 2 else 'viridis'
+        ax = sns.barplot(x=[class_names[i] if i < len(class_names) else f'Class {i}' 
+                           for i in class_counts.index], 
+                        y=class_counts.values, palette=colors)
         
         # Add count labels on top of bars
         for i, count in enumerate(class_counts.values):
@@ -178,9 +194,9 @@ class HateSpeechVisualizer:
             
         clean_text = ' '.join(filtered_words)
         
-        # Create wordcloud with explicit font path for Windows systems
+        # Create wordcloud with platform-specific error handling
         try:
-            # Try using a common Windows font
+            # First try without specifying font path (works on most systems)
             wordcloud = WordCloud(
                 background_color='white',
                 max_words=150,
@@ -189,12 +205,11 @@ class HateSpeechVisualizer:
                 height=400,
                 contour_width=1,
                 contour_color='steelblue',
-                colormap='viridis',
-                font_path=r'C:\Windows\Fonts\Arial.ttf'  # Explicit Windows font path
+                colormap='viridis'
             ).generate(clean_text)
-        except (OSError, FileNotFoundError):
+        except Exception as e:
             try:
-                # Fallback to another common font
+                # Try with a common Windows font path
                 wordcloud = WordCloud(
                     background_color='white',
                     max_words=150,
@@ -204,11 +219,11 @@ class HateSpeechVisualizer:
                     contour_width=1,
                     contour_color='steelblue',
                     colormap='viridis',
-                    font_path=r'C:\Windows\Fonts\Verdana.ttf'  # Alternative font
+                    font_path=r'C:\Windows\Fonts\Arial.ttf'
                 ).generate(clean_text)
-            except (OSError, FileNotFoundError):
-                # Last resort, try without specifying font path but catch any errors
+            except Exception as e:
                 try:
+                    # Try with another common font
                     wordcloud = WordCloud(
                         background_color='white',
                         max_words=150,
@@ -217,13 +232,14 @@ class HateSpeechVisualizer:
                         height=400,
                         contour_width=1,
                         contour_color='steelblue',
-                        colormap='viridis'
+                        colormap='viridis',
+                        font_path=r'C:\Windows\Fonts\Verdana.ttf'
                     ).generate(clean_text)
                 except Exception as e:
                     print(f"WordCloud generation failed: {e}")
                     # Create a dummy image with error message
                     plt.figure(figsize=(16, 8))
-                    plt.text(0.5, 0.5, "WordCloud generation failed: Font not found", 
+                    plt.text(0.5, 0.5, "WordCloud generation failed - Font not found", 
                             fontsize=16, ha='center', va='center')
                     plt.axis('off')
                     plt.tight_layout()

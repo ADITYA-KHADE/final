@@ -71,7 +71,25 @@ class ComprehensiveHateSpeechDetector:
             'ass', 'asshole', 'shit', 'bullshit', 'crap',
             'tits', 'boobs', 'breasts', 'cum', 'jizz', 'semen',
             'sex', 'sexual', 'sexy', 'horny', 'masturbate',
-            'oral', 'anal', 'bitch', 'bastard', 'damn'
+            'oral', 'anal', 'bitch', 'bastard', 'damn',
+            # Additional terms and compound anatomical terms
+            'big boobs', 'small boobs', 'huge boobs', 'nice boobs',
+            'big tits', 'small tits', 'huge tits', 'nice tits',
+            'wet pussy', 'tight pussy', 'big ass', 'fat ass', 'nice ass',
+            'tight ass', 'big butt', 'large breasts', 'small breasts',
+            'nipples', 'butthole', 'buttocks', 'rear end', 'private parts',
+            'genitals', 'genital', 'genital area', 'crotch',
+            'blow job', 'blowjob', 'handjob', 'hand job', 'rimjob', 'rim job',
+            'jerking off', 'jerk off', 'wanking', 'wank', 'fingering',
+            'titjob', 'tit job', 'titty fuck', 'titfuck'
+        ]
+        
+        # Anatomical term patterns for regex matching (handles variations better)
+        self.anatomical_patterns = [
+            r'big\s+(?:boobs|tits|breasts|ass|butt)',
+            r'(?:nice|huge|large|small|tight|wet|hot)\s+(?:boobs|tits|breasts|ass|butt|pussy)',
+            r'(?:suck|lick|eat|finger)\s+(?:boobs|tits|breasts|ass|butt|pussy)',
+            r'(?:show|see|nice|sexy)\s+(?:boobs|tits|breasts|ass|butt|pussy)'
         ]
         
         # Disability groups
@@ -285,6 +303,17 @@ class ComprehensiveHateSpeechDetector:
                     results['hate_category'] = 'sexual/explicit'
                     results['targeted_group'] = 'general'
                     break
+            
+            # Check anatomical term patterns
+            for pattern in self.anatomical_patterns:
+                if re.search(pattern, text_lower):
+                    matches = re.findall(pattern, text_lower)
+                    match_text = matches[0] if matches else pattern
+                    results['patterns_found'].append(f'Anatomical pattern match: {match_text}')
+                    results['hate_score'] += 0.5
+                    results['hate_category'] = 'sexual/explicit'
+                    results['targeted_group'] = 'general'
+                    break
         
         # Check for generalizations (common to all categories)
         for gen in self.generalizations:
@@ -342,8 +371,9 @@ def apply_comprehensive_hate_detection(text, model_result):
             model_result['prediction'] = 'Hate Speech'
             model_result['prediction_code'] = 1
             
-            # Adjust confidence based on hate score
-            model_result['confidence'] = max(detection_result['hate_score'], 0.7)
+            # Set confidence directly based on hate score without minimum threshold
+            # This allows confidence to reflect actual intensity of hate speech detected
+            model_result['confidence'] = detection_result['hate_score']
             
             # Add hate speech information
             model_result['comprehensive_hate_detection'] = detection_result
